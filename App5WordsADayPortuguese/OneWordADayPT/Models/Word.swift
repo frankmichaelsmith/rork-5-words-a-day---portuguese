@@ -4,9 +4,14 @@ nonisolated enum PartOfSpeech: String, Codable, Sendable, CaseIterable {
     case noun
     case verb
     case adjective
+    case adverb
+    case preposition
+    case conjunction
+    case pronoun
+    case phrase
 }
 
-nonisolated enum DifficultyTier: Int, Codable, Sendable, Comparable {
+nonisolated enum DifficultyTier: Int, Codable, Sendable, Comparable, CaseIterable {
     case beginner = 1
     case elementary = 2
     case intermediate = 3
@@ -16,6 +21,13 @@ nonisolated enum DifficultyTier: Int, Codable, Sendable, Comparable {
     nonisolated static func < (lhs: DifficultyTier, rhs: DifficultyTier) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
+}
+
+nonisolated enum ConjugationPattern: String, Codable, Sendable {
+    case regularAR
+    case regularER
+    case regularIR
+    case irregular
 }
 
 nonisolated struct Word: Codable, Sendable, Identifiable, Hashable {
@@ -30,6 +42,12 @@ nonisolated struct Word: Codable, Sendable, Identifiable, Hashable {
     let difficultyTier: DifficultyTier
     let conjugations: VerbConjugations?
     let article: String?
+    let category: String
+    let plural: String?
+    let gender: String?
+    let synonyms: [String]?
+    let notes: String?
+    let conjugationPattern: ConjugationPattern?
 
     var displayPortuguese: String {
         if let article {

@@ -87,29 +87,20 @@ struct RecallView: View {
 
     private func loadRecallWords() {
         let eligible = viewModel.allUserWords.filter { !$0.isKnown && $0.masteryScore < 90 }
-        var items = Array(eligible.shuffled().prefix(8))
+        let items = Array(eligible.shuffled().prefix(8))
 
-        if let conjData = viewModel.conjugationChallenge(),
-           !items.contains(where: { $0.wordId == conjData.userWord.wordId }),
-           let word = VocabularyDatabase.shared.word(byId: conjData.userWord.wordId),
-           let conj = word.conjugations {
-            conjugationChallenge = ConjugationPrompt(
-                userWord: conjData.userWord,
-                pronoun: conjData.pronoun,
-                tense: conjData.tense,
-                answer: conjData.answer,
-                infinitive: conj.infinitive
-            )
-        } else if let conjData = viewModel.conjugationChallenge() {
-            if let word = VocabularyDatabase.shared.word(byId: conjData.userWord.wordId),
-               let conj = word.conjugations {
-                conjugationChallenge = ConjugationPrompt(
-                    userWord: conjData.userWord,
-                    pronoun: conjData.pronoun,
-                    tense: conjData.tense,
-                    answer: conjData.answer,
-                    infinitive: conj.infinitive
-                )
+        if let conjData = viewModel.conjugationChallenge() {
+            if let word = VocabularyDatabase.shared.word(byId: conjData.userWord.wordId) {
+                let conj = word.conjugations ?? ConjugationEngine.conjugations(for: word)
+                if let conj {
+                    conjugationChallenge = ConjugationPrompt(
+                        userWord: conjData.userWord,
+                        pronoun: conjData.pronoun,
+                        tense: conjData.tense,
+                        answer: conjData.answer,
+                        infinitive: conj.infinitive
+                    )
+                }
             }
         }
 

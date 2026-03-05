@@ -73,9 +73,11 @@ class AppViewModel {
     var countByPartOfSpeech: [(String, Int)] {
         let words = allUserWords
         let grouped = Dictionary(grouping: words) { $0.partOfSpeech }
-        return [("Noun", grouped["noun"]?.count ?? 0),
-                ("Verb", grouped["verb"]?.count ?? 0),
-                ("Adjective", grouped["adjective"]?.count ?? 0)]
+        return PartOfSpeech.allCases.compactMap { pos in
+            let count = grouped[pos.rawValue]?.count ?? 0
+            guard count > 0 else { return nil }
+            return (pos.rawValue.capitalized, count)
+        }
     }
 
     var reviewCount: Int {
@@ -349,8 +351,16 @@ class AppViewModel {
     func conjugationChallenge() -> (userWord: UserWord, pronoun: String, tense: String, answer: String)? {
         let verbs = allUserWords.filter { $0.partOfSpeech == "verb" && !$0.isKnown && $0.masteryScore < 90 }
         guard let userWord = verbs.randomElement(),
-              let word = VocabularyDatabase.shared.word(byId: userWord.wordId),
-              let conj = word.conjugations else { return nil }
+              let word = VocabularyDatabase.shared.word(byId: userWord.wordId) else { return nil }
+
+        let conj: VerbConjugations?
+        if let explicit = word.conjugations {
+            conj = explicit
+        } else {
+            conj = ConjugationEngine.conjugations(for: word)
+        }
+
+        guard let conj else { return nil }
 
         let pronouns = ["eu", "você", "ele/ela", "nós", "vocês"]
         let tenses: [(String, [String])] = [

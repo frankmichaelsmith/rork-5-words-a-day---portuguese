@@ -1,32 +1,33 @@
 import Foundation
-import SwiftData
 
 struct DailyWordService {
     static func dailyWords(
         learnedWordIds: Set<String>,
         difficultyTier: DifficultyTier
-    ) -> (noun: Word, verb: Word, adjective: Word)? {
+    ) -> [Word] {
         let db = VocabularyDatabase.shared
+        db.ensureTiersLoaded(through: difficultyTier)
+
+        let available = db.words(tier: difficultyTier).filter { !learnedWordIds.contains($0.id) }
+        guard !available.isEmpty else { return [] }
 
         let seed = daySeed()
+        var selected: [Word] = []
+        var usedIds: Set<String> = []
 
-        let availableNouns = db.nouns(tier: difficultyTier).filter { !learnedWordIds.contains($0.id) }
-        let availableVerbs = db.verbs(tier: difficultyTier).filter { !learnedWordIds.contains($0.id) }
-        let availableAdjectives = db.adjectives(tier: difficultyTier).filter { !learnedWordIds.contains($0.id) }
+        let targetPOS: [PartOfSpeech] = [.noun, .verb, .adjective, .noun, .verb]
 
-        guard !availableNouns.isEmpty, !availableVerbs.isEmpty, !availableAdjectives.isEmpty else {
-            return nil
+        for (i, pos) in targetPOS.enumerated() {
+            let posAvailable = available.filter { $0.partOfSpeech == pos && !usedIds.contains($0.id) }
+            if !posAvailable.isEmpty {
+                let index = abs((seed + "\(pos.rawValue)\(i)").hashValue) % posAvailable.count
+                let word = posAvailable[index]
+                selected.append(word)
+                usedIds.insert(word.id)
+            }
         }
 
-        let nounIndex = abs(seed.hashValue) % availableNouns.count
-        let verbIndex = abs((seed + "verb").hashValue) % availableVerbs.count
-        let adjIndex = abs((seed + "adj").hashValue) % availableAdjectives.count
-
-        return (
-            noun: availableNouns[nounIndex],
-            verb: availableVerbs[verbIndex],
-            adjective: availableAdjectives[adjIndex]
-        )
+        return selected
     }
 
     static func replacementWord(
@@ -36,17 +37,11 @@ struct DailyWordService {
         difficultyTier: DifficultyTier
     ) -> Word? {
         let db = VocabularyDatabase.shared
-        let allExcluded = learnedWordIds.union(excludeIds)
+        db.ensureTiersLoaded(through: difficultyTier)
 
-        let available: [Word]
-        switch partOfSpeech {
-        case .noun:
-            available = db.nouns(tier: difficultyTier).filter { !allExcluded.contains($0.id) }
-        case .verb:
-            available = db.verbs(tier: difficultyTier).filter { !allExcluded.contains($0.id) }
-        case .adjective:
-            available = db.adjectives(tier: difficultyTier).filter { !allExcluded.contains($0.id) }
-        }
+        let allExcluded = learnedWordIds.union(excludeIds)
+        let available = db.words(partOfSpeech: partOfSpeech, tier: difficultyTier)
+            .filter { !allExcluded.contains($0.id) }
 
         return available.randomElement()
     }

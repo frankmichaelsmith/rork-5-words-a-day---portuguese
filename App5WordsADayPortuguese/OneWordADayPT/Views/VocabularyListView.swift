@@ -12,7 +12,10 @@ nonisolated enum VocabFilterOption: String, CaseIterable, Sendable {
     case all = "All"
     case nouns = "Nouns"
     case verbs = "Verbs"
-    case adjectives = "Adjectives"
+    case adjectives = "Adj."
+    case adverbs = "Adv."
+    case phrases = "Phrases"
+    case other = "Other"
 }
 
 struct VocabularyListView: View {
@@ -37,6 +40,9 @@ struct VocabularyListView: View {
         case .nouns: words = words.filter { $0.partOfSpeech == "noun" }
         case .verbs: words = words.filter { $0.partOfSpeech == "verb" }
         case .adjectives: words = words.filter { $0.partOfSpeech == "adjective" }
+        case .adverbs: words = words.filter { $0.partOfSpeech == "adverb" }
+        case .phrases: words = words.filter { $0.partOfSpeech == "phrase" }
+        case .other: words = words.filter { ["preposition", "conjunction", "pronoun"].contains($0.partOfSpeech) }
         }
 
         switch sortOption {
@@ -103,26 +109,28 @@ struct VocabularyListView: View {
 
     private var filterSection: some View {
         Section {
-            HStack(spacing: 8) {
-                ForEach(VocabFilterOption.allCases, id: \.rawValue) { option in
-                    Button {
-                        withAnimation(.snappy) {
-                            filterOption = option
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(VocabFilterOption.allCases, id: \.rawValue) { option in
+                        Button {
+                            withAnimation(.snappy) {
+                                filterOption = option
+                            }
+                        } label: {
+                            Text(option.rawValue)
+                                .font(.caption.weight(.medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    filterOption == option ? Color.blue : Color(.quaternarySystemFill),
+                                    in: Capsule()
+                                )
+                                .foregroundStyle(filterOption == option ? .white : .primary)
                         }
-                    } label: {
-                        Text(option.rawValue)
-                            .font(.caption.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                filterOption == option ? Color.blue : Color(.quaternarySystemFill),
-                                in: Capsule()
-                            )
-                            .foregroundStyle(filterOption == option ? .white : .primary)
                     }
                 }
-                Spacer()
             }
+            .contentMargins(.horizontal, 0)
 
             Picker("Sort", selection: $sortOption) {
                 ForEach(VocabSortOption.allCases, id: \.rawValue) { option in
@@ -174,6 +182,11 @@ struct WordRow: View {
         case "noun": .blue
         case "verb": .orange
         case "adjective": .purple
+        case "adverb": .teal
+        case "preposition": .indigo
+        case "conjunction": .mint
+        case "pronoun": .cyan
+        case "phrase": .green
         default: .gray
         }
     }
@@ -212,6 +225,27 @@ struct WordDetailSheet: View {
                             .font(.system(.callout, design: .monospaced))
                             .foregroundStyle(.secondary)
 
+                        if word.partOfSpeech == .noun {
+                            HStack(spacing: 12) {
+                                if let gender = word.gender {
+                                    Label(gender == "m" ? "Masculine" : "Feminine", systemImage: gender == "m" ? "m.circle.fill" : "f.circle.fill")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(gender == "m" ? .blue : .pink)
+                                }
+                                if let plural = word.plural {
+                                    Label("Plural: \(plural)", systemImage: "textformat.abc")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        if !word.category.isEmpty {
+                            Label(word.category.capitalized, systemImage: "tag.fill")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+
                         Divider()
 
                         VStack(alignment: .leading, spacing: 4) {
@@ -225,9 +259,34 @@ struct WordDetailSheet: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        if let conjugations = word.conjugations {
+                        if let synonyms = word.synonyms, !synonyms.isEmpty {
                             Divider()
-                            conjugationSection(conjugations)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Synonyms")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Text(synonyms.joined(separator: ", "))
+                                    .font(.callout)
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+
+                        if let notes = word.notes, !notes.isEmpty {
+                            Divider()
+                            HStack(alignment: .top, spacing: 6) {
+                                Image(systemName: "lightbulb.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.yellow)
+                                Text(notes)
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        let conj = word.conjugations ?? ConjugationEngine.conjugations(for: word)
+                        if let conj {
+                            Divider()
+                            conjugationSection(conj)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

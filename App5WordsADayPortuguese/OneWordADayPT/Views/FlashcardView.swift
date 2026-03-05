@@ -43,11 +43,29 @@ struct FlashcardView: View {
 
     private var frontContent: some View {
         VStack(spacing: 16) {
-            partOfSpeechBadge
+            HStack(spacing: 8) {
+                partOfSpeechBadge
+
+                if let category = word.category.isEmpty ? nil : word.category {
+                    Text(category.uppercased())
+                        .font(.caption2.weight(.medium))
+                        .tracking(0.8)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.quaternary, in: Capsule())
+                }
+            }
 
             Text(word.displayPortuguese)
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(.primary)
+
+            if word.partOfSpeech == .noun, let gender = word.gender {
+                Text(gender == "m" ? "masculine" : "feminine")
+                    .font(.caption)
+                    .foregroundStyle(gender == "m" ? .blue : .pink)
+            }
 
             Text(word.ipa)
                 .font(.system(.body, design: .monospaced))
@@ -72,7 +90,19 @@ struct FlashcardView: View {
 
     private var flippedContent: some View {
         VStack(spacing: 16) {
-            partOfSpeechBadge
+            HStack(spacing: 8) {
+                partOfSpeechBadge
+
+                if !word.category.isEmpty {
+                    Text(word.category.uppercased())
+                        .font(.caption2.weight(.medium))
+                        .tracking(0.8)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.quaternary, in: Capsule())
+                }
+            }
 
             Text(word.english)
                 .font(.system(size: 32, weight: .bold))
@@ -85,6 +115,10 @@ struct FlashcardView: View {
             Text(word.ipa)
                 .font(.system(.callout, design: .monospaced))
                 .foregroundStyle(.tertiary)
+
+            if word.partOfSpeech == .noun {
+                nounDetails
+            }
 
             Divider()
                 .padding(.vertical, 4)
@@ -100,10 +134,27 @@ struct FlashcardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if word.partOfSpeech == .verb, let conjugations = word.conjugations {
+            if word.partOfSpeech == .verb {
+                let conj = word.conjugations ?? ConjugationEngine.conjugations(for: word)
+                if let conj {
+                    Divider()
+                        .padding(.vertical, 4)
+                    conjugationSection(conj)
+                }
+            }
+
+            if let notes = word.notes, !notes.isEmpty {
                 Divider()
                     .padding(.vertical, 4)
-                conjugationSection(conjugations)
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.caption)
+                        .foregroundStyle(.yellow)
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             HStack(spacing: 16) {
@@ -118,6 +169,25 @@ struct FlashcardView: View {
             .padding(.top, 4)
         }
         .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private var nounDetails: some View {
+        HStack(spacing: 12) {
+            if let gender = word.gender {
+                Text(gender == "m" ? "masc." : "fem.")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(gender == "m" ? .blue : .pink)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background((gender == "m" ? Color.blue : Color.pink).opacity(0.1), in: Capsule())
+            }
+            if let plural = word.plural {
+                Text("pl: \(plural)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     private func conjugationSection(_ conj: VerbConjugations) -> some View {
@@ -186,6 +256,11 @@ struct FlashcardView: View {
         case .noun: .blue
         case .verb: .orange
         case .adjective: .purple
+        case .adverb: .teal
+        case .preposition: .indigo
+        case .conjunction: .mint
+        case .pronoun: .cyan
+        case .phrase: .green
         }
     }
 

@@ -76,7 +76,7 @@ struct DailyWordsView: View {
                 .monospacedDigit()
             + Text(" to go")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .padding(14)
         .background(Color(.secondarySystemGroupedBackground))
